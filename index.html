@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Feeling Machine</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a1a; overflow: hidden; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const DEFAULT_PARAMS = {
+      palette: ["#6366f1","#8b5cf6","#a78bfa","#c4b5fd","#1e1b4b"],
+      bgColor: "#0a0a1a", particleCount: 180, speed: 0.6, waveAmplitude: 80,
+      waveFrequency: 0.012, turbulence: 0.3, connectionDistance: 120,
+      particleSize: 2.2, pulseRate: 0.02, spiralStrength: 0.15, opacity: 0.75,
+      mood: "serene", description: "A calm, flowing cosmos"
+    };
+
+    const MOOD_PRESETS = {
+      joy: {
+        palette: ["#fbbf24","#f59e0b","#fb923c","#fde68a","#fffbeb"],
+        bgColor:"#1a1000", particleCount:280, speed:1.8, waveAmplitude:60,
+        waveFrequency:0.02, turbulence:0.4, connectionDistance:160,
+        particleSize:2.8, pulseRate:0.05, spiralStrength:0.25, opacity:0.9,
+        mood:"joyful", description:"Golden light bursts outward, dancing without reason"
+      },
+      sad: {
+        palette: ["#3b82f6","#1d4ed8","#1e3a8a","#93c5fd","#dbeafe"],
+        bgColor:"#050d1a", particleCount:100, speed:0.2, waveAmplitude:40,
+        waveFrequency:0.006, turbulence:0.1, connectionDistance:70,
+        particleSize:1.8, pulseRate:0.008, spiralStrength:0.05, opacity:0.5,
+        mood:"melancholic", description:"Blue mist drifts slowly through an endless night"
+      },
+      angry: {
+        palette: ["#dc2626","#b91c1c","#f97316","#7f1d1d","#ef4444"],
+        bgColor:"#0f0000", particleCount:350, speed:2.8, waveAmplitude:180,
+        waveFrequency:0.035, turbulence:2.2, connectionDistance:90,
+        particleSize:3.5, pulseRate:0.075, spiralStrength:0.6, opacity:0.95,
+        mood:"furious", description:"Crimson chaos tears through the void, unstoppable"
+      },
+      anxious: {
+        palette: ["#f97316","#ef4444","#fbbf24","#dc2626","#fed7aa"],
+        bgColor:"#0f0800", particleCount:320, speed:2.2, waveAmplitude:120,
+        waveFrequency:0.038, turbulence:2.0, connectionDistance:80,
+        particleSize:2.0, pulseRate:0.07, spiralStrength:0.4, opacity:0.85,
+        mood:"anxious", description:"Frantic sparks scatter in every direction, never settling"
+      },
+      calm: {
+        palette: ["#2dd4bf","#0d9488","#99f6e4","#5eead4","#0f766e"],
+        bgColor:"#010f0e", particleCount:120, speed:0.25, waveAmplitude:100,
+        waveFrequency:0.006, turbulence:0.08, connectionDistance:130,
+        particleSize:2.0, pulseRate:0.007, spiralStrength:0.08, opacity:0.65,
+        mood:"peaceful", description:"Teal ripples breathe slowly across still water"
+      },
+      love: {
+        palette: ["#ec4899","#f43f5e","#fb7185","#fda4af","#fce7f3"],
+        bgColor:"#110008", particleCount:220, speed:0.9, waveAmplitude:70,
+        waveFrequency:0.014, turbulence:0.2, connectionDistance:180,
+        particleSize:2.5, pulseRate:0.03, spiralStrength:0.3, opacity:0.88,
+        mood:"loving", description:"Rose petals orbit each other in an eternal embrace"
+      },
+      excited: {
+        palette: ["#a855f7","#22d3ee","#f59e0b","#10b981","#f43f5e"],
+        bgColor:"#080010", particleCount:380, speed:2.5, waveAmplitude:90,
+        waveFrequency:0.028, turbulence:1.2, connectionDistance:140,
+        particleSize:2.6, pulseRate:0.065, spiralStrength:0.35, opacity:0.92,
+        mood:"excited", description:"A supernova of color erupts in every direction at once"
+      },
+      lonely: {
+        palette: ["#6b7280","#9ca3af","#374151","#4b5563","#d1d5db"],
+        bgColor:"#080808", particleCount:80, speed:0.15, waveAmplitude:30,
+        waveFrequency:0.005, turbulence:0.06, connectionDistance:50,
+        particleSize:1.5, pulseRate:0.006, spiralStrength:0.04, opacity:0.4,
+        mood:"lonely", description:"Distant grey embers float apart, never quite touching"
+      },
+      wonder: {
+        palette: ["#7c3aed","#4f46e5","#a78bfa","#e0e7ff","#c7d2fe"],
+        bgColor:"#04000f", particleCount:250, speed:0.7, waveAmplitude:90,
+        waveFrequency:0.01, turbulence:0.15, connectionDistance:150,
+        particleSize:2.2, pulseRate:0.018, spiralStrength:0.5, opacity:0.8,
+        mood:"awestruck", description:"A galaxy slowly turns, ancient and infinite and silent"
+      },
+      nostalgic: {
+        palette: ["#d97706","#b45309","#fbbf24","#92400e","#fde68a"],
+        bgColor:"#0d0800", particleCount:150, speed:0.3, waveAmplitude:55,
+        waveFrequency:0.008, turbulence:0.12, connectionDistance:110,
+        particleSize:2.0, pulseRate:0.012, spiralStrength:0.1, opacity:0.6,
+        mood:"nostalgic", description:"Warm amber embers drift like half-remembered summer evenings"
+      }
+    };
+
+    const KEYWORDS = {
+      joy:       ["joy","joyful","happy","happiness","great","wonderful","fantastic","amazing","good","nice","glad","elated","cheerful","heureux","heureuse","joie","bien","super","content","contente","génial"],
+      sad:       ["sad","sadness","unhappy","depressed","grief","sorrow","cry","crying","tears","miserable","heartbroken","triste","tristesse","pleurer","déprimé","chagrin","malheureux"],
+      angry:     ["angry","anger","furious","rage","mad","livid","outraged","frustrated","irritated","hate","colère","furieux","enragé","frustré","en colère"],
+      anxious:   ["anxious","anxiety","nervous","worried","worry","stressed","stress","overwhelmed","panicked","panic","fear","scared","anxieux","angoissé","stressé","inquiet","peur"],
+      calm:      ["calm","peaceful","relaxed","tranquil","serene","zen","quiet","still","calme","paisible","relaxé","tranquille","serein","détendu"],
+      love:      ["love","loved","romantic","affection","tender","warmth","adore","crush","passion","amour","amoureux","romantique","tendresse"],
+      excited:   ["excited","excitement","thrilled","hyped","pumped","energetic","euphoric","excité","enthousiaste","euphorique","électrisé"],
+      lonely:    ["lonely","loneliness","alone","isolated","abandoned","forgotten","seul","seule","solitude","isolé","abandonné"],
+      wonder:    ["wonder","awe","amazed","amazement","inspired","astonished","incredible","awestruck","émerveillement","émerveillé","impressionné","stupéfait"],
+      nostalgic: ["nostalgic","nostalgia","memories","remember","past","childhood","miss","wistful","nostalgique","nostalgie","souvenirs","passé","enfance"]
+    };
+
+    function detectMood(text) {
+      const lower = text.toLowerCase();
+      const scores = {};
+      for (const [mood, words] of Object.entries(KEYWORDS))
+        scores[mood] = words.filter(w => lower.includes(w)).length;
+      const best = Object.entries(scores).sort((a,b) => b[1]-a[1])[0];
+      return best[1] > 0 ? best[0] : null;
+    }
+
+    function lerp(a,b,t) { return a+(b-a)*t; }
+    function hexToRgb(hex) {
+      return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+    }
+
+    function EmotionalArt() {
+      const canvasRef = useRef(null);
+      const stateRef  = useRef(null);
+      const animRef   = useRef(null);
+      const [feeling, setFeeling]       = useState("");
+      const [currentMood, setCurrentMood] = useState("serene");
+      const [description, setDescription] = useState("A calm, flowing cosmos");
+      const [showInput, setShowInput]   = useState(false);
+      const paramsRef = useRef({...DEFAULT_PARAMS});
+      const targetRef = useRef({...DEFAULT_PARAMS});
+
+      const initParticles = useCallback((canvas, params) => {
+        return Array.from({length: params.particleCount}, () => ({
+          x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+          vx:(Math.random()-.5)*params.speed, vy:(Math.random()-.5)*params.speed,
+          size: params.particleSize*(0.5+Math.random()),
+          colorIdx: Math.floor(Math.random()*(params.palette.length-1)),
+          phase: Math.random()*Math.PI*2, life: Math.random()
+        }));
+      }, []);
+
+      const draw = useCallback(() => {
+        const canvas = canvasRef.current; if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const state = stateRef.current, p = paramsRef.current, t = targetRef.current;
+        const ls = 0.02;
+        p.speed             = lerp(p.speed, t.speed, ls);
+        p.waveAmplitude     = lerp(p.waveAmplitude, t.waveAmplitude, ls);
+        p.waveFrequency     = lerp(p.waveFrequency, t.waveFrequency, ls);
+        p.turbulence        = lerp(p.turbulence, t.turbulence, ls);
+        p.connectionDistance= lerp(p.connectionDistance, t.connectionDistance, ls);
+        p.particleSize      = lerp(p.particleSize, t.particleSize, ls);
+        p.pulseRate         = lerp(p.pulseRate, t.pulseRate, ls);
+        p.spiralStrength    = lerp(p.spiralStrength, t.spiralStrength, ls);
+        p.opacity           = lerp(p.opacity, t.opacity, ls);
+        const bg = hexToRgb(p.bgColor), tb = hexToRgb(t.bgColor);
+        p.bgColor = "#"+[0,1,2].map(i=>Math.round(lerp(bg[i],tb[i],ls)).toString(16).padStart(2,"0")).join("");
+
+        state.time += 0.016;
+        const bgr = hexToRgb(p.bgColor);
+        ctx.fillStyle=`rgba(${bgr[0]},${bgr[1]},${bgr[2]},0.18)`;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        const cx=canvas.width/2, cy=canvas.height/2;
+
+        for (let i=0; i<state.particles.length; i++) {
+          for (let j=i+1; j<state.particles.length; j++) {
+            const p1=state.particles[i], p2=state.particles[j];
+            const dx=p1.x-p2.x, dy=p1.y-p2.y, dist=Math.sqrt(dx*dx+dy*dy);
+            if (dist < p.connectionDistance) {
+              const alpha=(1-dist/p.connectionDistance)*0.35*p.opacity;
+              const rgb=hexToRgb(t.palette[Math.min(p1.colorIdx,t.palette.length-2)]);
+              ctx.beginPath(); ctx.strokeStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+              ctx.lineWidth=0.5; ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+            }
+          }
+        }
+
+        state.particles.forEach(pt => {
+          pt.phase += p.pulseRate;
+          const w1=Math.sin(pt.x*p.waveFrequency+state.time)*p.waveAmplitude*0.01;
+          const w2=Math.cos(pt.y*p.waveFrequency*0.7+state.time*0.8)*p.waveAmplitude*0.01;
+          const dx=pt.x-cx, dy=pt.y-cy, angle=Math.atan2(dy,dx), dist=Math.sqrt(dx*dx+dy*dy);
+          const sx=-Math.sin(angle)*p.spiralStrength*(dist/(canvas.width*0.5));
+          const sy= Math.cos(angle)*p.spiralStrength*(dist/(canvas.width*0.5));
+          const tx=(Math.sin(pt.x*0.008+state.time*1.3)+Math.sin(pt.y*0.006+state.time))*p.turbulence*0.5;
+          const ty=(Math.cos(pt.y*0.008+state.time*0.9)+Math.cos(pt.x*0.005+state.time*1.1))*p.turbulence*0.5;
+          pt.vx+=w1+sx+tx; pt.vy+=w2+sy+ty;
+          const ms=p.speed*3, spd=Math.sqrt(pt.vx*pt.vx+pt.vy*pt.vy);
+          if(spd>ms){pt.vx=(pt.vx/spd)*ms; pt.vy=(pt.vy/spd)*ms;}
+          pt.vx*=0.985; pt.vy*=0.985; pt.x+=pt.vx; pt.y+=pt.vy;
+          if(pt.x<0)pt.x=canvas.width; if(pt.x>canvas.width)pt.x=0;
+          if(pt.y<0)pt.y=canvas.height; if(pt.y>canvas.height)pt.y=0;
+          if(pt.colorIdx>=t.palette.length-1) pt.colorIdx=Math.floor(Math.random()*(t.palette.length-1));
+          const pulse=0.7+0.3*Math.sin(pt.phase);
+          const sz=p.particleSize*pulse*(0.7+0.6*pt.life);
+          const rgb=hexToRgb(t.palette[pt.colorIdx]), al=p.opacity*pulse*0.9;
+          ctx.beginPath(); ctx.arc(pt.x,pt.y,sz,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${al})`; ctx.fill();
+          ctx.beginPath(); ctx.arc(pt.x,pt.y,sz*2.5,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${al*0.15})`; ctx.fill();
+        });
+        animRef.current = requestAnimationFrame(draw);
+      }, []);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        const resize = () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
+        resize(); window.addEventListener("resize",resize);
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle=DEFAULT_PARAMS.bgColor; ctx.fillRect(0,0,canvas.width,canvas.height);
+        stateRef.current={time:0, particles:initParticles(canvas,DEFAULT_PARAMS)};
+        animRef.current=requestAnimationFrame(draw);
+        return ()=>{ window.removeEventListener("resize",resize); cancelAnimationFrame(animRef.current); };
+      }, [draw,initParticles]);
+
+      const analyzeFeeling = () => {
+        if (!feeling.trim()) return;
+        setShowInput(false);
+        const detected = detectMood(feeling);
+        const preset = detected ? MOOD_PRESETS[detected] : DEFAULT_PARAMS;
+        targetRef.current = {...DEFAULT_PARAMS, ...preset};
+        setCurrentMood(preset.mood);
+        setDescription(preset.description);
+        const canvas = canvasRef.current;
+        if (Math.abs(preset.particleCount - stateRef.current.particles.length) > 50)
+          stateRef.current.particles = initParticles(canvas, preset);
+        setFeeling("");
+      };
+
+      return (
+        <div style={{position:"relative",width:"100vw",height:"100vh",overflow:"hidden",fontFamily:"system-ui"}}>
+          <canvas ref={canvasRef} style={{display:"block",position:"absolute",inset:0}} />
+
+          <div style={{position:"absolute",top:24,left:28,pointerEvents:"none"}}>
+            <div style={{color:"rgba(255,255,255,0.85)",fontSize:14,fontWeight:300,marginBottom:4}}>The feeling machine</div>
+            <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,letterSpacing:"0.12em",textTransform:"uppercase"}}>{currentMood}</div>
+          </div>
+
+          {description && (
+            <div style={{position:"absolute",bottom:90,left:"50%",transform:"translateX(-50%)",color:"rgba(255,255,255,0.4)",fontSize:13,textAlign:"center",maxWidth:400,lineHeight:1.6,pointerEvents:"none"}}>
+              {description}
+            </div>
+          )}
+
+          {showInput ? (
+            <div style={{position:"absolute",bottom:28,left:"50%",transform:"translateX(-50%)",display:"flex",gap:8,alignItems:"center",background:"rgba(0,0,0,0.55)",backdropFilter:"blur(12px)",border:"0.5px solid rgba(255,255,255,0.15)",borderRadius:40,padding:"8px 8px 8px 20px",width:"min(640px,90vw)"}}>
+              <input autoFocus value={feeling} onChange={e=>setFeeling(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")analyzeFeeling();if(e.key==="Escape")setShowInput(false);}}
+                placeholder="How are you feeling right now?"
+                style={{flex:1,background:"transparent",border:"none",outline:"none",color:"rgba(255,255,255,0.9)",fontSize:14,caretColor:"white"}}
+              />
+              <button onClick={analyzeFeeling} disabled={!feeling.trim()}
+                style={{background:"rgba(255,255,255,0.15)",border:"0.5px solid rgba(255,255,255,0.2)",borderRadius:30,padding:"7px 18px",color:"rgba(255,255,255,0.8)",fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>
+                Update →
+              </button>
+              <button onClick={()=>setShowInput(false)}
+                style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.35)",fontSize:18,cursor:"pointer",padding:"0 6px"}}>×</button>
+            </div>
+          ) : (
+            <button onClick={()=>setShowInput(true)}
+              style={{position:"absolute",bottom:28,left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.4)",backdropFilter:"blur(8px)",border:"0.5px solid rgba(255,255,255,0.18)",borderRadius:30,padding:"10px 28px",color:"rgba(255,255,255,0.6)",fontSize:13,cursor:"pointer",letterSpacing:"0.06em"}}
+              onMouseEnter={e=>e.target.style.color="rgba(255,255,255,0.9)"}
+              onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.6)"}>
+              how are you feeling?
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<EmotionalArt />);
+  </script>
+</body>
+</html>
